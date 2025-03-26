@@ -1,73 +1,57 @@
 import streamlit as st
 import numpy as np
 import cv2
-import tempfile
-import os
 from tensorflow.keras.models import load_model
+from tensorflow.keras.applications import InceptionV3
+from tensorflow.keras.applications.inception_v3 import preprocess_input
+from tensorflow.keras.models import Model
 
-# Load the trained model
+# Load pre-trained feature extractor (CNN)
+base_model = InceptionV3(weights='imagenet', include_top=False, pooling='avg')
+feature_extractor = Model(inputs=base_model.input, outputs=base_model.output)
+
+# Load trained LSTM model
 model = load_model('best_violence_model.h5')
 
-# Constants (update as per your training setup)
-IMG_SIZE = 64
-SEQUENCE_LENGTH = 20
+def extract_features(frames):
+    features = []
+    for frame in frames:
+        frame = cv2.resize(frame, (299, 299))  # Resize for InceptionV3
+        frame = preprocess_input(frame)  # Normalize
+        frame = np.expand_dims(frame, axis=0)  # Add batch dimension
+        feature = feature_extractor.predict(frame)
+        features.append(feature)
+    return np.array(features)  # Shape: (num_frames, 2048)
 
-# Preprocess video into frames
-def preprocess_video(video_path):
-    cap = cv2.VideoCapture(video_path)
-    frames = []
-    try:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            frame = cv2.resize(frame, (IMG_SIZE, IMG_SIZE))
-            frame = frame / 255.0
-            frames.append(frame)
-            if len(frames) == SEQUENCE_LENGTH:
-                break
-    finally:
-        cap.release()
-
-    # Pad with black frames if fewer than SEQUENCE_LENGTH
-    while len(frames) < SEQUENCE_LENGTH:
-        frames.append(np.zeros((IMG_SIZE, IMG_SIZE, 3)))
-
-    frames_array = np.array(frames)
+def predict_violence(video_frames):
+    video_features = extract_features(video_frames)  # Convert to (num_frames, 2048)
     
-    # Debugging: Print shape of processed frames
-    print(f"Processed video shape: {frames_array.shape}")
+    if video_features.shape[0] < 30:
+        padding = np.zeros((30 - video_features.shape[0], 2048))
+        video_features = np.vstack((video_features, padding))  # Shape: (30, 2048)
 
-    return np.expand_dims(frames_array, axis=0)  # Final shape: (1, SEQUENCE_LENGTH, IMG_SIZE, IMG_SIZE, 3)
+    video_features = np.expand_dims(video_features, axis=0)  # Shape: (1, 30, 2048)
+    prediction = model.predict(video_features)
+    return prediction
 
-# Streamlit UI
-st.title("Violence Detection in Video")
+st.title("Violence Detection in Videos")
+uploaded_file = st.file_uploader("Upload a video file...", type=["mp4", "avi", "mov"])
 
-video_file = st.file_uploader("Upload a video", type=["mp4", "avi", "mov"])
+if uploaded_file is not None:
+    st.video(uploaded_file)
+    
+    cap = cv2.VideoCapture(uploaded_file.name)
+    frames = []
+    
+    while len(frames) < 20 and cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frames.append(frame)
 
-if video_file is not None:
-    # Save uploaded file temporarily
-    tfile = tempfile.NamedTemporaryFile(delete=False)
-    tfile.write(video_file.read())
-    video_path = tfile.name
+    cap.release()
 
-    st.video(video_file)
-
-    # Process and predict
-    st.write("Processing video and making prediction...")
-    input_data = preprocess_video(video_path)
-
-    # Debugging: Display shape before prediction
-    st.write(f"Input shape for prediction: {input_data.shape}")
-
-    try:
-        prediction = model.predict(input_data)[0][0]
-        if prediction > 0.5:
-            st.error(f"Violence Detected! (Confidence: {prediction:.2f})")
-        else:
-            st.success(f"No Violence Detected (Confidence: {1 - prediction:.2f})")
-    except ValueError as e:
-        st.error(f"Prediction error: {str(e)}")
-
-    # Clean up
-    os.remove(video_path)
+    if len(frames) > 0:
+        prediction = predict_violence(frames)
+        st.write(f"Violence Probability: {prediction[0][0]:.4f}")
