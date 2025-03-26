@@ -29,12 +29,16 @@ def preprocess_video(video_path):
     finally:
         cap.release()
 
-    # Pad with zeros if fewer frames
-    if len(frames) < SEQUENCE_LENGTH:
-        padding = [np.zeros((IMG_SIZE, IMG_SIZE, 3))] * (SEQUENCE_LENGTH - len(frames))
-        frames.extend(padding)
+    # Pad with black frames if fewer than SEQUENCE_LENGTH
+    while len(frames) < SEQUENCE_LENGTH:
+        frames.append(np.zeros((IMG_SIZE, IMG_SIZE, 3)))
 
-    return np.expand_dims(np.array(frames), axis=0)  # Shape: (1, SEQUENCE_LENGTH, IMG_SIZE, IMG_SIZE, 3)
+    frames_array = np.array(frames)
+    
+    # Debugging: Print shape of processed frames
+    print(f"Processed video shape: {frames_array.shape}")
+
+    return np.expand_dims(frames_array, axis=0)  # Final shape: (1, SEQUENCE_LENGTH, IMG_SIZE, IMG_SIZE, 3)
 
 # Streamlit UI
 st.title("Violence Detection in Video")
@@ -52,12 +56,18 @@ if video_file is not None:
     # Process and predict
     st.write("Processing video and making prediction...")
     input_data = preprocess_video(video_path)
-    prediction = model.predict(input_data)[0][0]
 
-    if prediction > 0.5:
-        st.error(f"Violence Detected! (Confidence: {prediction:.2f})")
-    else:
-        st.success(f"No Violence Detected (Confidence: {1 - prediction:.2f})")
+    # Debugging: Display shape before prediction
+    st.write(f"Input shape for prediction: {input_data.shape}")
+
+    try:
+        prediction = model.predict(input_data)[0][0]
+        if prediction > 0.5:
+            st.error(f"Violence Detected! (Confidence: {prediction:.2f})")
+        else:
+            st.success(f"No Violence Detected (Confidence: {1 - prediction:.2f})")
+    except ValueError as e:
+        st.error(f"Prediction error: {str(e)}")
 
     # Clean up
     os.remove(video_path)
