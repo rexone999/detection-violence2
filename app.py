@@ -5,6 +5,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.applications import InceptionV3
 from tensorflow.keras.applications.inception_v3 import preprocess_input
 from tensorflow.keras.models import Model
+import tempfile
 
 # Load pre-trained feature extractor (CNN)
 base_model = InceptionV3(weights='imagenet', include_top=False, pooling='avg')
@@ -20,7 +21,9 @@ def extract_features(frames):
         frame = preprocess_input(frame)  # Normalize
         frame = np.expand_dims(frame, axis=0)  # Add batch dimension
         feature = feature_extractor.predict(frame)
-        features.append(feature)
+        features.append(feature.squeeze())  # Remove extra dimensions
+    
+    st.write(f"Extracted {len(features)} feature vectors")
     return np.array(features)  # Shape: (num_frames, 2048)
 
 def predict_violence(video_frames):
@@ -35,15 +38,19 @@ def predict_violence(video_frames):
     return prediction
 
 st.title("Violence Detection in Videos")
-uploaded_file = st.file_uploader("Upload a video file...", type=["mp4", "avi", "mov"])
+uploaded_file = st.file_uploader("Upload a video file...", type=["mp4", "avi", "mov", "mpeg"])
 
 if uploaded_file is not None:
-    st.video(uploaded_file)
+    tfile = tempfile.NamedTemporaryFile(delete=False)
+    tfile.write(uploaded_file.read())
+    video_path = tfile.name
     
-    cap = cv2.VideoCapture(uploaded_file.name)
+    st.video(video_path)
+    
+    cap = cv2.VideoCapture(video_path)
     frames = []
     
-    while len(frames) < 20 and cap.isOpened():
+    while len(frames) < 30 and cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
@@ -51,7 +58,16 @@ if uploaded_file is not None:
         frames.append(frame)
 
     cap.release()
-
+    
+    st.write(f"Extracted {len(frames)} frames from video")
+    
     if len(frames) > 0:
         prediction = predict_violence(frames)
-        st.write(f"Violence Probability: {prediction[0][0]:.4f}")
+        violence_probability = prediction[0][0]
+        
+        st.write(f"**Violence Probability: {violence_probability:.4f}**")
+        
+        if violence_probability > 0.5:
+            st.error("⚠️ Violence detected in the video!")
+        else:
+            st.success("✅ No violence detected in the video.")
