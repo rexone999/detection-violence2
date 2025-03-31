@@ -22,18 +22,11 @@ def extract_features(frames):
         frame = np.expand_dims(frame, axis=0)  # Add batch dimension
         feature = feature_extractor.predict(frame)
         features.append(feature.squeeze())  # Remove extra dimensions
-    
-    st.write(f"Extracted {len(features)} feature vectors")
     return np.array(features)  # Shape: (num_frames, 2048)
 
 def predict_violence(video_frames):
     video_features = extract_features(video_frames)  # Convert to (num_frames, 2048)
-    
-    if video_features.shape[0] < 30:
-        padding = np.zeros((30 - video_features.shape[0], 2048))
-        video_features = np.vstack((video_features, padding))  # Shape: (30, 2048)
-
-    video_features = np.expand_dims(video_features, axis=0)  # Shape: (1, 30, 2048)
+    video_features = np.expand_dims(video_features, axis=0)  # Shape: (1, num_frames, 2048)
     prediction = model.predict(video_features)
     return prediction
 
@@ -49,25 +42,30 @@ if uploaded_file is not None:
     
     cap = cv2.VideoCapture(video_path)
     frames = []
+    timestamps = []
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_count = 0
     
-    while len(frames) < 30 and cap.isOpened():
+    while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
+        
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frames.append(frame)
-
+        timestamps.append(frame_count / fps)  # Convert frame number to timestamp (seconds)
+        frame_count += 1
+    
     cap.release()
     
     st.write(f"Extracted {len(frames)} frames from video")
     
     if len(frames) > 0:
-        prediction = predict_violence(frames)
-        violence_probability = prediction[0][0]
+        predictions = predict_violence(frames)
+        violence_timestamps = [timestamps[i] for i, pred in enumerate(predictions[0]) if pred > 0.5]
         
-        st.write(f"**Violence Probability: {violence_probability:.4f}**")
-        
-        if violence_probability > 0.5:
-            st.error("⚠️ Violence detected in the video!")
+        if violence_timestamps:
+            st.error("⚠️ Violence detected at timestamps (seconds):")
+            st.write(violence_timestamps)
         else:
             st.success("✅ No violence detected in the video.")
