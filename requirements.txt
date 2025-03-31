@@ -4,4 +4,3 @@ pandas
 tensorflow
 matplotlib
 numpy
-opencv-python-headless
