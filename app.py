@@ -67,7 +67,7 @@ if uploaded_file is not None:
         
         st.write(f"**Violence Probability: {violence_probability:.4f}**")
         
-        if violence_probability > 0.5:
+        if violence_probability > 0.4:
             st.error("⚠️ Violence detected in the video!")
         else:
             st.success("✅ No violence detected in the video.")
