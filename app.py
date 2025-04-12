@@ -43,7 +43,7 @@ def predict_violence(video_frames):
 def send_email_alert(probability):
     sender_email = "projectmajorvd25@gmail.com.com"
     sender_password = "Ap10@w0667"  # App password if using Gmail with 2FA
-    recipient_email = "recipient_email@example.com"
+    recipient_email = "schimpanna@gmail.com"
 
     subject = "⚠️ Violence Detected in Uploaded Video"
     body = f"A video uploaded to the system has been flagged for violence with a probability of {probability:.2f}."
