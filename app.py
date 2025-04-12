@@ -41,7 +41,7 @@ def predict_violence(video_frames):
     return prediction
 
 def send_email_alert(probability):
-    sender_email = "sanlucannon@gmail.com"
+    sender_email = "photoholic95@gmail.com"
     sender_password = "Ap10@w0667"  # App password if using Gmail with 2FA
     recipient_email = "schimpanna@gmail.com"
 
