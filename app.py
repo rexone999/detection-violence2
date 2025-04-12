@@ -6,9 +6,6 @@ from tensorflow.keras.applications import InceptionV3
 from tensorflow.keras.applications.inception_v3 import preprocess_input
 from tensorflow.keras.models import Model
 import tempfile
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 # Load pre-trained feature extractor (CNN)
 base_model = InceptionV3(weights='imagenet', include_top=False, pooling='avg')
@@ -40,29 +37,6 @@ def predict_violence(video_frames):
     prediction = model.predict(video_features)
     return prediction
 
-def send_email_alert(probability):
-    sender_email = "photoholic95@gmail.com"
-    sender_password = "Ap10@w0667"  # App password if using Gmail with 2FA
-    recipient_email = "schimpanna@gmail.com"
-
-    subject = "⚠️ Violence Detected in Uploaded Video"
-    body = f"A video uploaded to the system has been flagged for violence with a probability of {probability:.2f}."
-
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = recipient_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender_email, sender_password)
-            server.send_message(msg)
-            st.info("📧 Alert email has been sent.")
-    except Exception as e:
-        st.error(f"Failed to send email: {e}")
-
-# Streamlit app interface
 st.title("Violence Detection in Videos")
 uploaded_file = st.file_uploader("Upload a video file...", type=["mp4", "avi", "mov", "mpeg"])
 
@@ -91,8 +65,8 @@ if uploaded_file is not None:
         prediction = predict_violence(frames)
         violence_probability = prediction[0][0]
         
+        
         if violence_probability > 0.3:
             st.error("⚠️ Violence detected in the video!")
-            send_email_alert(violence_probability)
         else:
             st.success("✅ No violence detected in the video.")
