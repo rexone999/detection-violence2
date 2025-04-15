@@ -6,6 +6,9 @@ from tensorflow.keras.applications import InceptionV3
 from tensorflow.keras.applications.inception_v3 import preprocess_input
 from tensorflow.keras.models import Model
 import tempfile
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Load pre-trained feature extractor (CNN)
 base_model = InceptionV3(weights='imagenet', include_top=False, pooling='avg')
@@ -37,8 +40,33 @@ def predict_violence(video_frames):
     prediction = model.predict(video_features)
     return prediction
 
+def send_email(recipient_email, subject, body):
+    sender_email = "drippletriplesid@gmail.com"  # Replace with your email
+    sender_password = "Meatlover45@"  # Replace with your email password
+
+    # Create the email
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        # Set up the server
+        server = smtplib.SMTP('smtp.gmail.com', 587)  # Use your email provider's SMTP server
+        server.starttls()  # Upgrade the connection to a secure encrypted SSL/TLS connection
+        server.login(sender_email, sender_password)  # Log in to your email account
+        server.send_message(msg)  # Send the email
+        server.quit()  # Close the connection
+        st.success("Email notification sent successfully!")
+    except Exception as e:
+        st.error(f"Failed to send email: {e}")
+
+# Streamlit UI
 st.title("Violence Detection in Videos")
 uploaded_file = st.file_uploader("Upload a video file...", type=["mp4", "avi", "mov", "mpeg"])
+recipient_email = st.text_input("Enter your email address for notifications:")
 
 if uploaded_file is not None:
     tfile = tempfile.NamedTemporaryFile(delete=False)
@@ -65,8 +93,9 @@ if uploaded_file is not None:
         prediction = predict_violence(frames)
         violence_probability = prediction[0][0]
         
-        
         if violence_probability > 0.3:
             st.error("⚠️ Violence detected in the video!")
+            if recipient_email:
+                send_email(recipient_email, "Violence Detection Alert", "Violence has been detected in the video you uploaded.")
         else:
             st.success("✅ No violence detected in the video.")
