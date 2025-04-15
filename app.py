@@ -41,7 +41,7 @@ def predict_violence(video_frames):
     return prediction
 
 def send_email(recipient_email, subject, body):
-    sender_email = "drippletriplesid@gmail.com"  # Replace with your email
+    sender_email = "riotid2.0@gmail.com"  # Replace with your email
     sender_password = "Meatlover45@"  # Replace with your email password
 
     # Create the email
