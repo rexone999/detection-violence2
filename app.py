@@ -14,7 +14,7 @@ from email.mime.multipart import MIMEMultipart
 st.sidebar.header("SMTP Email Settings")
 smtp_server = st.sidebar.text_input("SMTP Server", "smtp.gmail.com")
 smtp_port = st.sidebar.number_input("SMTP Port", value=587, step=1)
-sender_email = st.sidebar.text_input("Sender Email", "riotid2.0@gmail.com")
+sender_email = st.sidebar.text_input("Sender Email", "drippletriplesid@gmail.com")
 sender_password = st.sidebar.text_input("Sender Email Password", type="password", value="Meatlover45@")
 
 # Load pre-trained feature extractor (CNN)
